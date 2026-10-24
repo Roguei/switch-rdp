@@ -1,0 +1,33 @@
+# build output
+build/
+dist/
+src/*.o
+*.o
+*.elf
+*.nro
+*.zip
+
+# local scratch / captures (never published)
+shots/
+out/
+ref/
+scratch/
+docs/baselines/
+third_party/
+__pycache__/
+*.pyc
+
+# tools: keep only the published helpers, ignore the research pile
+tools/*
+!tools/build_nro.py
+!tools/build_mbedtls.py
+!tools/check_nro.py
+!tools/gen_icon.py
+!tools/gen_ui_font.py
+!tools/install_to_sd.ps1
+!tools/rela_scan.py
+!tools/rle_sim.py
+!tools/rle_vectors.txt
+!tools/_mk_rle_test.py
+!tools/_rle_sim_batch.py
+!tools/make_release.py

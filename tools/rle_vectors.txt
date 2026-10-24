@@ -1,0 +1,21 @@
+# w h bpp hex   -- hand-built interleaved-RLE order streams
+# 1: captured from Server 2012 (flags=0x401, one 64x64 black tile)
+64 64 16 001c840000000000000000f0bc0f840000000000000000
+# 2: colour run 64 (0x6800) + bg run 4032 -> solid 0x1c00 tile
+64 64 16 68001cf0c00f
+# 3: first row built from specials only (7x FGBG_1 + 1x FGBG_2 = 64 px)
+64 64 16 f9f9f9f9f9f9f9faf0c00f
+# 4: colour-run first row, second row XORs it with a mega set-fg run
+64 64 16 68001cf640003412f0800f
+# 5: extended-length FGBG_IMAGE with 8 mask bytes, then bg run
+64 64 16 403faaaaaaaaaaaaaaaaf0c00f
+# 6: 32bpp mega colour run over 256 px
+16 16 32 f3000111223344
+# 7: 8bpp mega colour run
+16 16 8 f300017f
+# 8: 15bpp regular colour run
+8 8 15 68001c
+# 9: lite dithered run (28 px) + bg run rest
+16 16 16 ee22114433f0e400
+# 10: truncated / nonsense -> must fail cleanly
+64 64 16 001c84
