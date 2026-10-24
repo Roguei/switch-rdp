@@ -870,3 +870,51 @@ ASET 偏移是否落在文件内、icon 是不是 256x256 JPEG、NACP 是不是 
   凡是"可选资源"，产物尺寸必须校验，否则丢了都不知道。
 - Makefile 里的 `MBEDTLS` / `TOOLCHAIN` / `PYTHON` 改成 `?=` 可覆盖，
   别人的机器不用再改文件就能编。
+
+## 13. b50（2026-10-24）：最终版 - 位图分发修复、屏幕按键面板
+
+### 13.1 RDP 6 灰屏的真实原因（b46 修好）
+
+两种压缩位图共用 `BITMAP_COMPRESSION`（0x0001）：
+
+| 服务器 | 载荷 | 解码器 |
+|---|---|---|
+| Windows 10/11 | RDP 6 planar（`fmt` 字节 + `[alpha] Y Co Cg` 平面） | `rdp_planar.c` |
+| Windows 7/2008R2、Server 2012（RDP 5 模式） | RDP 5 interleaved RLE | `rle_decompress()` |
+
+b40 修 RLE 时把 `flags & 0x0001 && flags & 0x0400` 的数据**无条件**送进 RLE 解码器，
+planar 分支退化成永远走不到的 `else if`。win10 那台发来的 planar 数据被 RLE 判失败
+→ 一块都不画 → 灰屏。
+
+b46 改成按位深选解码器并互为兜底（32/24bpp 先 planar，8/15/16bpp 先 RLE），
+日志里能看到 `bmp ok ... planar=1` 或 `planar=0`。实测两台服务器都正常。
+
+### 13.2 键盘 / 鼠标：固件不向 applet 投递
+
+b47/b48 把 `hid` 共享内存的键盘、鼠标环形缓冲原样 dump 出来（96 字节）：
+采样号一直在涨（每几毫秒一条），但**键盘样本里键值区恒为 0**、鼠标样本里
+`delta_x/delta_y` 恒为 0，只有一个像"已连接"的标志位。启动日志里
+`applet type=2`（LibraryApplet）——即使从 hbmenu 用 R 键（标题覆盖）启动，
+NRO 仍然是被 hbmenu 作为 library applet 孵化出来的，所以拿不到键鼠输入。
+手柄与触摸走的是另外两条路（`EnableAppletToGetPadInput`/`TouchScreen`），
+所以一直正常。
+
+结论：这是固件/applet 层面的限制，客户端无法绕过。`hidGetMouseStates` 的支持
+（b49 加的：相对位移 + 三键 + 滚轮）保留着，万一以后在 Application 模式下跑就能用。
+
+### 13.3 屏幕按键面板（b49，b50 定稿）
+
+L+R 菜单变成 5 项，第 4 项「发送按键」，一屏 5×2 十个键：
+
+```
+Ctrl+C  Ctrl+V  Ctrl+X  Ctrl+Z  Ctrl+A
+Enter   Backspace  Delete  Esc   Ctrl+Alt+Del
+```
+
+十字键选、A 发送、B 返回；组合键按下顺序是 修饰键 → 主键 → 抬起 → 修饰键抬起。
+这是给"手柄没有、键盘又接不进来"的键兜底用的。
+
+### 13.4 顺手修的
+
+- 菜单加到 5 项后 `sel` 还在按 `%4` 循环，结果选不到「断开连接」（b49 的 bug）；
+- 设置页只有 4 行，却被上一版改成了 `%5` 循环。

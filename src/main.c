@@ -31,7 +31,7 @@
 #include "ui_draw.h"
 #include "rdp_update.h"
 
-#define SWRDP_BUILD "b43"
+#define SWRDP_BUILD "b50"
 
 #define SCR_W 1280
 #define SCR_H 720
@@ -71,6 +71,7 @@ typedef struct
     char user[64];
     char pass[64];
 } profile;
+
 
 static void profile_get(profile* p, int alt)
 {
@@ -486,8 +487,9 @@ static void draw_connect(const char* stage, int tick)
 
 static void draw_menu(int sel, const char* status)
 {
-    static const char* items[4] = {
-        "继续远程桌面", "输入文字 系统键盘", "设置 服务器 账号", "断开连接"
+    static const char* items[5] = {
+        "继续远程桌面", "输入文字 系统键盘", "设置 服务器 账号", "发送按键 屏幕键盘",
+        "断开连接"
     };
     if (screen_lock() != 0) return;
     ui_clear(COL_BG);
@@ -495,9 +497,9 @@ static void draw_menu(int sel, const char* status)
     ui_frame(40, 40, SCR_W - 80, SCR_H - 80, COL_ACCENT, 255);
     ui_text(80, 80, 3, COL_ACCENT, "会话菜单");
     ui_rect(80, 150, SCR_W - 160, 2, COL_PANEL, 255);
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 5; i++)
     {
-        int y = 200 + i * 72;
+        int y = 196 + i * 64;
         if (i == sel)
         {
             ui_rect(70, y - 14, SCR_W - 140, 60, COL_SEL, 255);
@@ -676,7 +678,9 @@ static int session_flow(const char* host, const char* port,
 
     fb_solid(0x00, 0x00, 0x40);
     run_desktop(conn);
+    tlog("disconnect: desktop returned");
     rdp_conn_free(conn);
+    tlog("disconnect: connection freed");
     return 1;
 }
 
@@ -951,6 +955,101 @@ static void settings_screen(const char* status_in)
     }
 }
 
+
+/* ------------------------------------------------------------------ */
+/* on-screen keys (no hardware keyboard needed)                       */
+/* ------------------------------------------------------------------ */
+#define KEY_PANEL_N 10
+
+typedef struct
+{
+    const char* label;
+    uint16_t mod;       /* first modifier scancode, 0 = none */
+    uint16_t mod2;      /* second modifier scancode, 0 = none */
+    uint16_t key;       /* main key scancode */
+    int ext;            /* main key is an extended scancode */
+} key_def;
+
+static const key_def k_keys[KEY_PANEL_N] = {
+    { "Ctrl+C", 0x1D, 0,    0x2E, 0 },
+    { "Ctrl+V", 0x1D, 0,    0x2F, 0 },
+    { "Ctrl+X", 0x1D, 0,    0x2D, 0 },
+    { "Ctrl+Z", 0x1D, 0,    0x2C, 0 },
+    { "Ctrl+A", 0x1D, 0,    0x1E, 0 },
+    { "Enter",  0,    0,    0x1C, 0 },
+    { "Backspace", 0, 0,    0x0E, 0 },
+    { "Delete", 0,    0,    0x53, 1 },
+    { "Esc",    0,    0,    0x01, 0 },
+    { "Ctrl+Alt+Del", 0x1D, 0x38, 0x53, 1 },
+};
+
+#define KEY_PANEL_COLS 5
+
+static void draw_key_panel(int sel)
+{
+    if (screen_lock() != 0) return;
+    ui_clear(COL_BG);
+    ui_rect(40, 40, SCR_W - 80, SCR_H - 80, COL_PANEL, 255);
+    ui_frame(40, 40, SCR_W - 80, SCR_H - 80, COL_ACCENT, 255);
+    ui_text(80, 90, 3, COL_ACCENT, "发送按键");
+    ui_text(80, 150, 2, COL_DIM, "没有硬件键盘也能发这些键");
+    for (int i = 0; i < KEY_PANEL_N; i++)
+    {
+        int cx = 110 + (i % KEY_PANEL_COLS) * 228;
+        int cy = 300 + (i / KEY_PANEL_COLS) * 140;
+        if (i == sel)
+        {
+            ui_rect(cx - 26, cy - 18, 210, 66, COL_SEL, 255);
+            ui_text(cx, cy, 2, 0xF0, 0xF4, 0xFA, k_keys[i].label);
+        }
+        else ui_text(cx, cy, 2, 0x8A, 0x94, 0xA6, k_keys[i].label);
+    }
+    ui_text(100, 640, 2, COL_TEXT, "方向选择   A 发送   B 返回");
+    screen_unlock();
+}
+
+static void key_send(rdp_conn* conn, const key_def* k)
+{
+    if (k->mod)  rdp_conn_key(conn, k->mod, 1, 0);
+    if (k->mod2) rdp_conn_key(conn, k->mod2, 1, 0);
+    rdp_conn_key(conn, k->key, 1, k->ext);
+    rdp_conn_key(conn, k->key, 0, k->ext);
+    if (k->mod2) rdp_conn_key(conn, k->mod2, 0, 0);
+    if (k->mod)  rdp_conn_key(conn, k->mod, 0, 0);
+}
+
+static void key_panel(rdp_conn* conn)
+{
+    int sel = 0, redraw = 1;
+    u64 prev = 0;
+
+    padUpdate(&g_pad);
+    prev = padGetButtons(&g_pad);
+    for (;;)
+    {
+        u64 cur, down;
+        padUpdate(&g_pad);
+        cur = padGetButtons(&g_pad);
+        down = cur & ~prev;
+        prev = cur;
+
+        if (down & HidNpadButton_Right) { sel = (sel + 1) % KEY_PANEL_N; redraw = 1; }
+        if (down & HidNpadButton_Left)  { sel = (sel + KEY_PANEL_N - 1) % KEY_PANEL_N; redraw = 1; }
+        if (down & HidNpadButton_Down)  { sel = (sel + KEY_PANEL_COLS) % KEY_PANEL_N; redraw = 1; }
+        if (down & HidNpadButton_Up)    { sel = (sel + KEY_PANEL_N - KEY_PANEL_COLS) % KEY_PANEL_N; redraw = 1; }
+        if (down & HidNpadButton_B) return;
+        if (down & HidNpadButton_A)
+        {
+            key_send(conn, &k_keys[sel]);
+            tlog("key panel: sent %s", k_keys[sel].label);
+            redraw = 1;
+        }
+        if (redraw) { draw_key_panel(sel); redraw = 0; }
+        for (int i = 0; i < 16; i++) if (rdp_conn_pump(conn, 0) <= 0) break;
+        svcSleepThread(20000000ULL);
+    }
+}
+
 /* ------------------------------------------------------------------ */
 /* session menu                                                       */
 /* ------------------------------------------------------------------ */
@@ -975,9 +1074,9 @@ static int session_menu(rdp_conn* conn)
         read_kbd(kdn, prev_kbd);
 
         if ((down & HidNpadButton_Down) || kbd_held(kdn, K_DOWN))
-        { sel = (sel + 1) % 4; redraw = 1; }
+        { sel = (sel + 1) % 5; redraw = 1; }
         if ((down & HidNpadButton_Up) || kbd_held(kdn, K_UP))
-        { sel = (sel + 3) % 4; redraw = 1; }
+        { sel = (sel + 4) % 5; redraw = 1; }
         if (down & (HidNpadButton_B | HidNpadButton_Plus))
         { tlog("menu: back"); action = 0; break; }
 
@@ -992,7 +1091,8 @@ static int session_menu(rdp_conn* conn)
                 redraw = 1;
             }
             if (sel == 2) { settings_screen(status); redraw = 1; }
-            if (sel == 3) { tlog("menu: disconnect"); action = 1; break; }
+            if (sel == 3) { key_panel(conn); redraw = 1; }
+            if (sel == 4) { tlog("menu: disconnect"); action = 1; break; }
         }
 
         if (redraw) { draw_menu(sel, status); redraw = 0; }
@@ -1077,6 +1177,7 @@ static int run_desktop(rdp_conn* conn)
     int touch_down = 0, full = 1, lr_latch = 0;
     u64 frames = 0, blits = 0, pdus = 0, blit_ms = 0, pump_ms = 0;
     u64 kbd_events = 0;
+    u32 prev_mouse = 0;
     int kbd_states = 0;                  /* hidGetKeyboardStates() return value */
     u64 kbd_mods = 0, kbd_keys = 0;      /* last raw keyboard state, for the log */
 
@@ -1100,6 +1201,10 @@ static int run_desktop(rdp_conn* conn)
                 if (r < 0) { err = 1; break; }
                 if (r == 0) break;
                 pdus++;
+                /* Any traffic resets the idle timer, so the full-screen
+                 * refresh below only fires when the server has gone quiet -
+                 * a forced 1280x720 repaint every 2 s was pure jank. */
+                t_nudge = svcGetSystemTick();
                 changed = 1;
                 if (surf->dirty_x1 > surf->dirty_x0 && surf->dirty_y1 > surf->dirty_y0)
                 {
@@ -1121,6 +1226,40 @@ static int run_desktop(rdp_conn* conn)
         frames++;
 
         {
+            /* USB mouse, if the firmware routes it: relative deltas move the
+             * pointer, the three buttons map to left/right/middle and the
+             * wheel goes through the same nudge as the right stick. */
+            HidMouseState mst;
+            if (hidGetMouseStates(&mst, 1) == 1)
+            {
+                if (mst.delta_x || mst.delta_y)
+                {
+                    mx += mst.delta_x;
+                    my += mst.delta_y;
+                    if (mx < 0) mx = 0;
+                    if (my < 0) my = 0;
+                    if (mx >= surf->width) mx = surf->width - 1;
+                    if (my >= surf->height) my = surf->height - 1;
+                    changed = 1;
+                }
+                if (mst.buttons != prev_mouse)
+                {
+                    u32 diff = mst.buttons ^ prev_mouse, b;
+                    prev_mouse = mst.buttons;
+                    while (diff)
+                    {
+                        int bit = __builtin_ctz(diff);
+                        diff &= diff - 1;
+                        b = 1u << bit;
+                        if (b == HidMouseButton_Left)   rdp_conn_mouse_button(conn, 1, (int)((mst.buttons & b) != 0));
+                        if (b == HidMouseButton_Right)  rdp_conn_mouse_button(conn, 2, (int)((mst.buttons & b) != 0));
+                        if (b == HidMouseButton_Middle) rdp_conn_mouse_button(conn, 3, (int)((mst.buttons & b) != 0));
+                    }
+                }
+                if (mst.wheel_delta_y)
+                    rdp_conn_mouse_wheel(conn, mst.wheel_delta_y > 0 ? 1 : -1);
+            }
+
             HidKeyboardState ks;
             int kn = (int)hidGetKeyboardStates(&ks, 1);
             kbd_states = kn;
@@ -1370,6 +1509,48 @@ static int run_desktop(rdp_conn* conn)
             tlog("kbd states=%d ev=%llu mods=%016llX keys=%016llX",
                  kbd_states, (unsigned long long)kbd_events,
                  (unsigned long long)kbd_mods, (unsigned long long)kbd_keys);
+            {
+                /* Dump the *newest* entry of the keyboard and mouse rings
+                 * (slot tail-1, not slot 0 - slot 0 may be stale).  The
+                 * keyboard entry never carries any key bits and its
+                 * "modifiers" word is a constant 0x400, so the field layout
+                 * and the input routing both need checking against bytes. */
+                HidSharedMemory* sm = (HidSharedMemory*)hidGetSharedmemAddr();
+                if (sm)
+                {
+                    char hex[200];
+                    int h;
+                    unsigned kslot = 0, mslot = 0;
+
+                    if (sm->keyboard.lifo.header.buffer_count)
+                        kslot = (unsigned)((sm->keyboard.lifo.header.tail +
+                                            sm->keyboard.lifo.header.buffer_count - 1) %
+                                           sm->keyboard.lifo.header.buffer_count);
+                    if (sm->mouse.lifo.header.buffer_count)
+                        mslot = (unsigned)((sm->mouse.lifo.header.tail +
+                                            sm->mouse.lifo.header.buffer_count - 1) %
+                                           sm->mouse.lifo.header.buffer_count);
+
+                    h = 0;
+                    {
+                        const uint8_t* raw = (const uint8_t*)&sm->keyboard.lifo.storage[kslot];
+                        for (int k = 0; k < 56 && h < 100; k++)
+                            h += snprintf(hex + h, sizeof(hex) - h, "%02x", raw[k]);
+                        tlog("kbd raw slot=%u tail=%llu cnt=%llu %s", kslot,
+                             (unsigned long long)sm->keyboard.lifo.header.tail,
+                             (unsigned long long)sm->keyboard.lifo.header.count, hex);
+                    }
+                    h = 0;
+                    {
+                        const uint8_t* raw = (const uint8_t*)&sm->mouse.lifo.storage[mslot];
+                        for (int k = 0; k < 56 && h < 100; k++)
+                            h += snprintf(hex + h, sizeof(hex) - h, "%02x", raw[k]);
+                        tlog("ms raw slot=%u tail=%llu cnt=%llu %s", mslot,
+                             (unsigned long long)sm->mouse.lifo.header.tail,
+                             (unsigned long long)sm->mouse.lifo.header.count, hex);
+                    }
+                }
+            }
             codes[0] = 0;
             for (int i = 0; i < 16; i++)
                 if (rdp_update_other_codes[i])
@@ -1378,13 +1559,13 @@ static int run_desktop(rdp_conn* conn)
             tlog("codes %s", o ? codes : "none");
         }
 
-        /* nudge: ask for the whole screen every 2 s, but never before the
-         * server has sent something (see session_flow) */
-        if (pdus > 0 && (svcGetSystemTick() - t_nudge) > 19200000ULL * 2ULL)
+        /* Idle nudge: only after 5 s without a single PDU (t_nudge is reset by
+         * real traffic), so a live desktop is never re-sent wholesale. */
+        if (pdus > 0 && (svcGetSystemTick() - t_nudge) > 19200000ULL * 5ULL)
         {
             t_nudge = svcGetSystemTick();
             rdp_conn_refresh(conn, 0, 0, SCR_W - 1, SCR_H - 1);
-            tlog("nudge: refresh rect sent (pdus=%llu)", (unsigned long long)pdus);
+            tlog("nudge: idle refresh (pdus=%llu)", (unsigned long long)pdus);
         }
 
         if (!pdus) svcSleepThread(500000ULL);
@@ -1407,6 +1588,7 @@ int main(void)
         tlog("nifm 0x%x socket 0x%x", nrc, src);
     }
     hidInitializeKeyboard();
+    hidInitializeMouse();
     hidInitializeTouchScreen();
     {
         static const HidNpadIdType ids[] = { HidNpadIdType_No1, HidNpadIdType_Handheld };

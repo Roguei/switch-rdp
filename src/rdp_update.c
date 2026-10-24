@@ -594,66 +594,81 @@ int rdp_update_bitmap(const uint8_t* body, size_t len, rdp_surface* surface)
             }
         }
 
-        if ((flags & 0x0001u) && (flags & 0x0400u))
+        if (flags & 0x0001u)
         {
-            /* compressed, but without the TS_CD_HEADER: interleaved RLE */
-            if (rle_decompress(body + p, blen, (int)w, (int)h, (int)bpp, s_tile) == 0)
+            /* Two different encodings share BITMAP_COMPRESSION (0x0001):
+             *   - RDP 6 "planar": fmt byte + [alpha] Y Co Cg planes, 24/32bpp.
+             *     This is what Windows 8/10/11 send, and it is also what a
+             *     Windows 10 server sends with NO_BITMAP_COMPRESSION_HDR set
+             *     (flags 0x0401) - there is no legacy RLE involved.
+             *   - RDP 5 interleaved RLE: colour/run orders, 8/15/16bpp.
+             *     Windows 7 / 2008 R2 era servers and Server 2012 in RDP 5
+             *     mode send this.
+             * The pixel depth picks the likely one and the other decoder is
+             * used as a fallback, so a 32bpp planar stream can never be fed
+             * to the RLE decoder again (that was the "grey screen on the
+             * Windows 10 server" bug). */
+            const uint8_t* src = body + p;
+            static int n_planar, n_rle;
+            int ok;
+
+            if (bpp == 32 || bpp == 24)
+            {
+                ok = (rdp_planar_decode(src, blen, (int)w, (int)h, s_tile) == 0);
+                if (ok) n_planar++;
+                else if ((ok = (rle_decompress(src, blen, (int)w, (int)h, (int)bpp,
+                                               s_tile) == 0)) != 0) n_rle++;
+            }
+            else
+            {
+                ok = (rle_decompress(src, blen, (int)w, (int)h, (int)bpp, s_tile) == 0);
+                if (ok) n_rle++;
+                else if ((ok = (rdp_planar_decode(src, blen, (int)w, (int)h,
+                                                 s_tile) == 0)) != 0) n_planar++;
+            }
+
+            if (ok)
             {
                 if (rdp_update_debug_log)
                 {
-                    /* Dump the first few *distinct* payloads.  The initial paint
-                     * is hundreds of identical tiles that say nothing; what is
-                     * worth having is the real desktop content. */
+                    /* First few *distinct* payloads, so a bad decode can be
+                     * checked against the bytes that produced it. */
                     static uint8_t last[64];
-                    static int lastlen, dumps, oks;
+                    static int lastlen, dumps;
                     if (dumps < 4 &&
                         (blen > sizeof(last) || blen != (size_t)lastlen ||
-                         memcmp(last, body + p, blen) != 0))
+                         memcmp(last, src, blen) != 0))
                     {
                         char hex[200], line[120];
                         int o = 0, n2 = blen < 40 ? (int)blen : 40;
                         dumps++;
                         lastlen = blen <= sizeof(last) ? (int)blen : 0;
-                        if (lastlen) memcpy(last, body + p, (size_t)lastlen);
+                        if (lastlen) memcpy(last, src, (size_t)lastlen);
                         for (int k = 0; k < n2 && o < 170; k++)
-                            o += snprintf(hex + o, sizeof(hex) - o, "%02x", body[p + k]);
-                        snprintf(line, sizeof(line), "rle dump %d,%d %dx%d bpp=%d len=%d",
-                                 (int)dl, (int)dt, (int)w, (int)h, (int)bpp, (int)blen);
+                            o += snprintf(hex + o, sizeof(hex) - o, "%02x", src[k]);
+                        snprintf(line, sizeof(line), "bmp dump %d,%d %dx%d bpp=%d len=%d fmt=%02X",
+                                 (int)dl, (int)dt, (int)w, (int)h, (int)bpp, (int)blen,
+                                 (unsigned)src[0]);
                         if (rdp_update_log_hook) rdp_update_log_hook(line);
                         if (rdp_update_log_hook) rdp_update_log_hook(hex);
                     }
-                    if (oks < 2)
-                    {
-                        char line[96];
-                        unsigned long sum = 0;
-                        unsigned n3 = w * h * 3u, k;
-                        oks++;
-                        for (k = 0; k < n3; k++) sum += s_tile[k];
-                        snprintf(line, sizeof(line), "rle ok %d,%d sum=%lu",
-                                 (int)dl, (int)dt, sum);
-                        if (rdp_update_log_hook) rdp_update_log_hook(line);
-                    }
+                    if (n_planar + n_rle <= 6)
+                        ulog7("bmp ok %d,%d %dx%d bpp=%d len=%d planar=%d",
+                              (int)dl, (int)dt, (int)w, (int)h, (int)bpp, (int)blen, n_planar);
                 }
                 blit(surface, (int)dl, (int)dt, (int)w, (int)h, s_tile);
                 applied++;
             }
             else
             {
-                static int rle_fail = 0;
-                if (rdp_update_debug_log && rle_fail < 6)
+                static int fails = 0;
+                if (rdp_update_debug_log && fails < 8)
                 {
-                    rle_fail++;
-                    ulog7("rle fail %d,%d %dx%d bpp=%d len=%d flags=0x%X",
-                          (int)dl, (int)dt, (int)w, (int)h, (int)bpp, (int)blen, (int)flags);
+                    fails++;
+                    ulog7("bmp fail %d,%d %dx%d bpp=%d len=%d fmt=%02X",
+                          (int)dl, (int)dt, (int)w, (int)h, (int)bpp, (int)blen,
+                          (unsigned)src[0]);
                 }
-            }
-        }
-        else if (flags & 0x0001u)
-        {
-            if (rdp_planar_decode(body + p, blen, (int)w, (int)h, s_tile) == 0)
-            {
-                blit(surface, (int)dl, (int)dt, (int)w, (int)h, s_tile);
-                applied++;
             }
         }
         else
