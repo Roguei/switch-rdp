@@ -672,8 +672,8 @@ static void send_confirm_active(rdp_conn* c, const uint8_t* demand, size_t len)
                 LOG(c, "  srv capset 0x%04X len=%u: %s", (unsigned)ctype,
                     (unsigned)clen, ln2);
             }
-            /* capset inventory: the "black screen on Server 2012" log needs to
-         * show what the server offered and what we did with it. */
+            /* capset inventory: the "black screen" log needs to show what the
+         * server offered and what we did with it. */
         LOG(c, "caps server 0x%04X len=%u -> %s", (unsigned)ctype, (unsigned)clen,
             ctype == 0x001D ? "dropped(bitmap codecs)" : "echoed");
         if (ctype == 0x001D && rdp_codec_mode == 1)

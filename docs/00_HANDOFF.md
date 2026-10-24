@@ -65,9 +65,9 @@ src/main.c         UI、配置、帧缓冲显示、按键/摇杆
 
 | 项 | 值 |
 |---|---|
-| 项目目录 | `C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp` |
-| 服务器 | `192.168.1.10:3389`（Windows 11 桌面，原生 1024×768，接受 1280×720） |
-| 账号 | `roguei` / `password`，域空 |
+| 项目目录 | `<repo>` |
+| 服务器 | `192.168.1.10:3389`（RDP 6 位图服务器，原生 1024×768，接受 1280×720） |
+| 账号 | `user` / `password`，域空 |
 | 客户端请求分辨率 | 1280×720（`main.c: RDP_WIDTH/HEIGHT`，正好等于 Switch 屏幕） |
 | 协议 | 服务器**强制 NLA**：X.224 offer 0x00 → `RDP_NEG_FAILURE` code 5 |
 
@@ -105,7 +105,7 @@ src/main.c         UI、配置、帧缓冲显示、按键/摇杆
 - `tools/rdp_client.py` —— **已验证可用的 Python 原型**（1661 行），协议流程的"参考实现"，
   任何 C 侧疑难都可以拿它对拍。用法见 `docs/04_TESTING.md`。
 - `tools/planar.py` —— Planar 解码器的 Python 版，和 C 版做过逐字节对拍（md5 相同）。
-- `C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp\ref\codec\` —— FreeRDP 3.5.1 的相关源码摘录（interleaved/bitmap/planar/nsc）。
+- `<repo>\ref\codec\` —— FreeRDP 3.5.1 的相关源码摘录（interleaved/bitmap/planar/nsc）。
 - `tools/an_xf.py`、`tools/an_cf.py` —— 从 FreeRDP 抓包日志里解析 Confirm Active / 输入 PDU。
 - `docs/08_DEVLOG.md` —— 更早的流水笔记
   （含各种失败尝试），有需要可以查。
@@ -192,7 +192,7 @@ b24 **彻底不用 libnx console**：所有界面（主界面、连接中、会�
 主界面不再写"上上下下左右左右BA"，配置文件模板注释里也删了。
 秘籍只存在于 `docs/` 里，界面/配置文件都不再提示。
 
-### 10.5 Server 2012 黑屏
+### 10.5 RDP 5 位图服务器 黑屏
 
 `rdp_update.c` 的未压缩位图行按 **4 字节对齐**读取（`TS_BITMAP_DATA` 行有 padding，
 不对齐会让每行错位成斜条纹/花块）。另外对 `BITMAP_COMPRESSION`（RLE）加了检测点，

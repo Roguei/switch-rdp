@@ -1,5 +1,5 @@
 # w h bpp hex   -- hand-built interleaved-RLE order streams
-# 1: captured from Server 2012 (flags=0x401, one 64x64 black tile)
+# 1: captured from an RDP 5 server (flags=0x401, one 64x64 black tile)
 64 64 16 001c840000000000000000f0bc0f840000000000000000
 # 2: colour run 64 (0x6800) + bg run 4032 -> solid 0x1c00 tile
 64 64 16 68001cf0c00f

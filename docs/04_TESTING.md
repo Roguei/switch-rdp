@@ -19,7 +19,7 @@
 
 ```powershell
 # 12 秒，1280x720
-python -c "import sys;sys.path.insert(0,r'C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp\tools');import rsh;print(rsh.run('cd /tmp/rt && RDP_W=1280 RDP_H=720 timeout 40 ./host_rdp 192.168.1.10 roguei password 12 /tmp/rt/v.ppm 2>&1 | tail -5',120)[1])"
+python -c "import sys;sys.path.insert(0,r'<repo>\tools');import rsh;print(rsh.run('cd /tmp/rt && RDP_W=1280 RDP_H=720 timeout 40 ./host_rdp 192.168.1.10 user password 12 /tmp/rt/v.ppm 2>&1 | tail -5',120)[1])"
 ```
 
 **判定**：日志出现 `[host] N updates, writing ...`，且 N 在几十以上；
@@ -37,7 +37,7 @@ PPM 转 PNG 后能看到 Windows 桌面（壁纸、图标、任务栏时钟）�
 
 ```powershell
 # 等价于 run_input_test.py
-cd /tmp/rt && RDP_INPUT_TEST=e RDP_W=1280 RDP_H=720 timeout 40 ./host_rdp 192.168.1.10 roguei password 12 /tmp/rt/k.ppm
+cd /tmp/rt && RDP_INPUT_TEST=e RDP_W=1280 RDP_H=720 timeout 40 ./host_rdp 192.168.1.10 user password 12 /tmp/rt/k.ppm
 ```
 
 **判定**：画面里出现资源管理器窗口（大量白色像素）。
@@ -90,15 +90,15 @@ RDP_DUMP2=1 # 字段级
 
 ```powershell
 # 1) 编译
-C:\Users\Administrator\Documents\switch工作区\toolchain\make.exe -j4
+<workdir>\toolchain\make.exe -j4
 
 # 2) 确认 SD 卡上的配置和旧日志
-Get-Content "C:\Users\Administrator\Documents\switch工作区\emulators\Nextendo\portable\sdcard\switch_rdp.cfg"
+Get-Content "<workdir>\emulators\Nextendo\portable\sdcard\switch_rdp.cfg"
 
 # 3) 手动：模拟器 File → Load Application → build\switch_rdp.nro
 
 # 4) 看日志（跑 20 秒后）
-Get-Content "C:\Users\Administrator\Documents\switch工作区\emulators\Nextendo\portable\sdcard\switch_rdp_log.txt"
+Get-Content "<workdir>\emulators\Nextendo\portable\sdcard\switch_rdp_log.txt"
 ```
 
 **成功日志长这样**：
@@ -107,7 +107,7 @@ Get-Content "C:\Users\Administrator\Documents\switch工作区\emulators\Nextendo
 switch_rdp b16-fastpath boot (sdmc mount 0x0)
 nifm 0x0
 socket 0x0
-cfg loaded (4 fields): 192.168.1.10 port=3389 user=roguei
+cfg loaded (4 fields): 192.168.1.10 port=3389 user=user
 auto-connect with stored credentials
 TCP connected
 X.224: NLA extended (HYBRID_EX)
@@ -147,11 +147,11 @@ frame 50 (1280x720) incoming=49 rects=1821
 
 ```powershell
 # 桌面画面
-cd /tmp/rt && RDP_W=1280 RDP_H=720 timeout 40 ./host_rdp 192.168.1.10 roguei password 10 /tmp/rt/base.ppm
+cd /tmp/rt && RDP_W=1280 RDP_H=720 timeout 40 ./host_rdp 192.168.1.10 user password 10 /tmp/rt/base.ppm
 # 键盘
-cd /tmp/rt && RDP_INPUT_TEST=e RDP_W=1280 RDP_H=720 timeout 40 ./host_rdp 192.168.1.10 roguei password 12 /tmp/rt/kbd.ppm
+cd /tmp/rt && RDP_INPUT_TEST=e RDP_W=1280 RDP_H=720 timeout 40 ./host_rdp 192.168.1.10 user password 12 /tmp/rt/kbd.ppm
 # 鼠标
-cd /tmp/rt && RDP_INPUT_TEST=b RDP_W=1280 RDP_H=720 timeout 40 ./host_rdp 192.168.1.10 roguei password 10 /tmp/rt/mouse.ppm
+cd /tmp/rt && RDP_INPUT_TEST=b RDP_W=1280 RDP_H=720 timeout 40 ./host_rdp 192.168.1.10 user password 10 /tmp/rt/mouse.ppm
 ```
 
 三张图都符合预期，才算没退化。
@@ -163,8 +163,8 @@ cd /tmp/rt && RDP_INPUT_TEST=b RDP_W=1280 RDP_H=720 timeout 40 ./host_rdp 192.16
 
 ```powershell
 # 新抓一份
-python -c "import sys;sys.path.insert(0,'C:/Users/Administrator/Documents/switch工作区/APP/switch_rdp/tools');import rsh;print(rsh.run('cd /tmp/rt && RDP_DUMP=1 RDP_DUMP2=1 RDP_W=1280 RDP_H=720 timeout 40 ./host_rdp 192.168.1.10 roguei password 8 /tmp/rt/base.ppm > /tmp/rt/base.log 2>&1',120)[1])"
-python -c "import sys;sys.path.insert(0,'C:/Users/Administrator/Documents/switch工作区/APP/switch_rdp/tools');import scp_get;scp_get.get('/tmp/rt/base.log','C:/Users/Administrator/Documents/switch工作区/APP/switch_rdp/out/new.log')"
+python -c "import sys;sys.path.insert(0,'<repo>/tools');import rsh;print(rsh.run('cd /tmp/rt && RDP_DUMP=1 RDP_DUMP2=1 RDP_W=1280 RDP_H=720 timeout 40 ./host_rdp 192.168.1.10 user password 8 /tmp/rt/base.ppm > /tmp/rt/base.log 2>&1',120)[1])"
+python -c "import sys;sys.path.insert(0,'<repo>/tools');import scp_get;scp_get.get('/tmp/rt/base.log','<repo>/out/new.log')"
 
 # 只比"结构性"行（忽略计数/时间戳）
 code-diff docs\baselines\host_run_b16.log out\new.log   # 或 fc / Beyond Compare
@@ -193,7 +193,7 @@ SRV control GRANTED_CONTROL (2)
 
 | 文件 | 含义 |
 |---|---|
-| `desktop_1280x720.png` | C 客户端渲染的 Windows 11 桌面（正确态） |
+| `desktop_1280x720.png` | C 客户端渲染的 RDP 6 位图服务器（正确态） |
 | `window_explorer.png` | Win+E 打开的资源管理器（键盘验证） |
 | `window_recycle.png` | 双击回收站打开的窗口（鼠标验证） |
 | `stale_titlebar.png` | 已知小瑕疵：旧标题栏残影（Surface commands 未实现） |
@@ -275,7 +275,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\install_to_sd.ps1 -A
 
 ```
 cd APP/switch_rdp
-C:/Users/Administrator/.dsh/dsh-runtimes/dsh-primary-runtime/dependencies/python/python.exe tools/_mk_rle_test.py
+python tools/_mk_rle_test.py
 Get-Content tools/rle_vectors.txt | Where-Object { $_ -match '^\s*\d' } | & .\tools\_rle_test.exe
 Get-Content tools/rle_vectors.txt | Where-Object { $_ -match '^\s*\d' } | & python tools/_rle_sim_batch.py
 ```

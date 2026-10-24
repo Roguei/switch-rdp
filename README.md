@@ -2,26 +2,22 @@
 
 <p align="center"><img src="assets/icon.jpg" width="140" alt="RDP icon"></p>
 
-用 devkitPro / libnx 从零写的一个原生 RDP 客户端。不依赖 FreeRDP、不依赖 OpenSSL：
+用 devkitPro / libnx 从零写的一个原生 RDP 客户端，不依赖 FreeRDP、不依赖 OpenSSL：
 X.224 → TLS → CredSSP/NLA → MCS → 能力协商 → FastPath 图形更新，全部自己实现。
-在 Atmosphere + hbmenu 的 Switch 上连 Windows 桌面，已针对 Windows Server 2012
-（RDP 5 风格 16bpp interleaved RLE）和 32bpp planar 两种服务器路径分别验证过。
-
-![RDP session](docs/images/rdp_session.png)
+位图编码支持 **RDP 6（32bpp planar）** 与 **RDP 5（16bpp interleaved RLE）**，
+外加未压缩位图，两代协议都实测可用。在 Atmosphere + hbmenu 的 Switch 上连接 Windows 桌面，
+1280×720 输出、增量重绘。
 
 ## 功能
 
 - **登录**：NLA（CredSSP：NTLM + SPNEGO + 公钥校验）
-- **图形**：32bpp planar（RDP6）、16bpp interleaved RLE（RDP5，Server 2012 走这条）、
-  未压缩位图；1280×720，只重绘脏矩形
+- **图形**：RDP 6 位图（planar）、RDP 5 位图（interleaved RLE）、未压缩位图；只重绘脏矩形
 - **鼠标**：左摇杆移动指针（速度按时间算，轻推一次 1 像素）、右摇杆上下滚轮、
   ZL/ZR 左右键、触摸屏可直接点
 - **按键**：十字键方向键、A 回车、B Esc
 - **文字**：Y 调系统键盘，含中文输入法，字符走 `SC_UNICODE` 直接送进远端
 - **UI**：L+R 呼出会话菜单（继续远程桌面 / 输入文字 / 设置 / 断开），全中文，
   纯 framebuffer 绘制（不带 libnx console，所以没有控制台退出崩溃）
-- **配置**：`SD:/switch_rdp.cfg`，可见配置 + 隐藏配置（隐藏配置由 `+` 与 `-` 同时按保存，
-  秘籍「上上下下左右左右 BA」用它直连）
 
 ## 安装
 
@@ -29,30 +25,6 @@ X.224 → TLS → CredSSP/NLA → MCS → 能力协商 → FastPath 图形更新
    （或直接下 `RDP_b43.nro`）
 2. 解压到 SD 卡根目录，得到 `SD:/switch/RDP.nro`
 3. hbmenu 里选中运行；图标与标题来自 NRO 尾部的 ASET 资源段（NACP 名称 `RDP`）
-
-## 配置
-
-`SD:/switch_rdp.cfg`，首次运行自动生成模板（UTF-8，可在 PC 上编辑）：
-
-```
-server = 192.168.1.10
-port = 3389
-user = administrator
-pass = 你的密码
-
-alt_server = 10.0.0.5          # 隐藏配置：秘籍用它连接
-alt_port = 3389
-alt_user = administrator
-alt_pass = 你的密码
-
-codecs = drop                  # drop / empty / keep，0x001D 能力集的处理方式
-```
-
-- 界面上按 `+` 保存可见配置。
-- 把隐藏服务器的信息填进界面后**同时按 `+` 和 `-`**：当前字段存进 `alt_*`，
-  界面随即恢复成已保存的可见配置（隐藏信息不留在屏幕上）。
-- 秘籍：上上下下左右左右 `B A` —— 用 `alt_*` 直连；`alt_server` 为空时只提示。
-- 密码是明文存的，SD 卡别乱借。
 
 ## 构建
 

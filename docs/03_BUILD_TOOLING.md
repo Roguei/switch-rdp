@@ -5,7 +5,7 @@
 本项目在**工作区里**：
 
 ```
-C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp\
+<repo>\
 ├─ src\            源码
 ├─ docs\           文档（本目录）
 ├─ tools\          验证脚本 + Python 原型
@@ -21,11 +21,11 @@ C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp\
 
 ### ⚠ 中文路径 + make 的坑（必读）
 
-工作区路径含中文（`switch工作区`）。**make 的 recipe 走 cmd.exe，不认 UTF-8 中文路径**，
+工作区路径含中文（`<工作区>`）。**make 的 recipe 走 cmd.exe，不认 UTF-8 中文路径**，
 所以 Makefile 里任何绝对路径都必须是 **8.3 短路径**（纯 ASCII）：
 
 ```
-MBEDTLS = C:/Users/ADMINI~1/DOCUME~1/SWITCH~1/APP/SWITCH~1/third_party/mbedtls-install
+MBEDTLS = third_party/mbedtls-install
 ```
 
 症状：`fatal error: mbedtls/bignum.h: No such file or directory`，而文件明明存在。
@@ -34,7 +34,7 @@ MBEDTLS = C:/Users/ADMINI~1/DOCUME~1/SWITCH~1/APP/SWITCH~1/third_party/mbedtls-i
 
 ```powershell
 $f = New-Object -ComObject Scripting.FileSystemObject
-$f.GetFolder("C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp").ShortPath
+$f.GetFolder("<repo>").ShortPath
 ```
 
 （Python 脚本不受影响，Python 3 用宽字符 API；`tools\*.py` 里可以直接写中文路径。）
@@ -47,9 +47,9 @@ $f.GetFolder("C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp").
 |---|---|---|
 | devkitA64 GCC | `C:\devkitPro\devkitA64\bin\aarch64-none-elf-gcc.exe` | |
 | libnx | `C:\devkitPro\libnx` | 链接时用 `libnx/switch_fixed.specs` |
-| mbedTLS 2.28.x（交叉编译产物） | `C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp\third_party\mbedtls-install` | `include/` + `lib/` |
-| GNU make | `C:\Users\Administrator\Documents\switch工作区\toolchain\make.exe` | 不在 PATH 里，要用全路径 |
-| NRO 打包脚本 | `C:\Users\Administrator\Documents\switch工作区\toolchain\build_nro.ps1` | 由 Makefile 调用 |
+| mbedTLS 2.28.x（交叉编译产物） | `<repo>\third_party\mbedtls-install` | `include/` + `lib/` |
+| GNU make | `<workdir>\toolchain\make.exe` | 不在 PATH 里，要用全路径 |
+| NRO 打包脚本 | `<workdir>\toolchain\build_nro.ps1` | 由 Makefile 调用 |
 
 ### ⚠ 三个"必须"，否则真机崩（2026-10-23 实机排障）
 
@@ -76,8 +76,8 @@ python tools/rela_scan.py build/switch_rdp.elf
 ### 编译
 
 ```powershell
-cd C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp
-C:\Users\Administrator\Documents\switch工作区\toolchain\make.exe -j4
+cd <repo>
+<workdir>\toolchain\make.exe -j4
 # 产物：build/switch_rdp.elf → build/switch_rdp.nro（约 1.12 MB）
 ```
 
@@ -127,7 +127,7 @@ hbmenu 用它显示图标与名称，Ryujinx 没有这一段会直接抛 `NullRe
 ```
 server = 192.168.1.10
 port = 3389
-user = roguei
+user = user
 pass = password
 alt_server = 10.0.0.5          # 隐藏配置：秘籍（上上下下左右左右 BA）用它连接
 alt_port = 3389
@@ -146,7 +146,7 @@ codecs = drop                  # drop / empty / keep，0x001D 能力集的处理
 
 | 项 | 路径 |
 |---|---|
-| 可执行 | `C:\Users\Administrator\Documents\switch工作区\emulators\Nextendo\Ryujinx.exe` |
+| 可执行 | `<workdir>\emulators\Nextendo\Ryujinx.exe` |
 | portable 目录 | 同目录 `portable\` |
 | **虚拟 SD 卡** | `portable\sdcard\`（`sdmc:/` 就是这里） |
 | 日志 | `portable\Logs\Ryujinx_*.log` |
@@ -169,7 +169,7 @@ codecs = drop                  # drop / empty / keep，0x001D 能力集的处理
 
 | 项 | 值 |
 |---|---|
-| 地址 | `192.168.100.17`，用户 `roguei`，密码 `password`（SSH 开着） |
+| 地址 | `192.168.1.17`，用户 `user`，密码 `password`（SSH 开着） |
 | 编译器 | gcc 15 |
 | mbedTLS | `libmbedtls-dev` 2.28.8 |
 | FreeRDP 3.5.1 | 源码 `/tmp/frd`，ninja 构建目录 `/tmp/frd/build`，xfreerdp 在 `/tmp/frd/build/client/X11/xfreerdp` |
@@ -183,18 +183,18 @@ codecs = drop                  # drop / empty / keep，0x001D 能力集的处理
 python tools\build_host3.py
 
 # 2) 跑 8 秒，输出 PPM
-python -c "import sys;sys.path.insert(0,r'C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp\tools');import rsh;print(rsh.run('cd /tmp/rt && ./host_rdp 192.168.1.10 roguei password 8 /tmp/rt/out.ppm',90)[1])"
+python -c "import sys;sys.path.insert(0,r'<repo>\tools');import rsh;print(rsh.run('cd /tmp/rt && ./host_rdp 192.168.1.10 user password 8 /tmp/rt/out.ppm',90)[1])"
 
 # 3) 取回并转 PNG
-python -c "import sys;sys.path.insert(0,r'C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp\tools');import scp_get;scp_get.get('/tmp/rt/out.ppm',r'C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp\out\out.ppm')"
-python tools\ppm2png3.py C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp\out\out.ppm C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp\out\out.png
+python -c "import sys;sys.path.insert(0,r'<repo>\tools');import scp_get;scp_get.get('/tmp/rt/out.ppm',r'<repo>\out\out.ppm')"
+python tools\ppm2png3.py <repo>\out\out.ppm <repo>\out\out.png
 ```
 
 **坑**：`build_host3.py` 只上传 `src/` 里的文件，**不上传 `tools/host_main.c`**。
 改了 harness 本身要先手动传：
 
 ```powershell
-python -c "import sys;sys.path.insert(0,r'C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp\tools');import scp;scp.put(r'C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp\tools\host_main.c','/tmp/rt/src/host_main.c')"
+python -c "import sys;sys.path.insert(0,r'<repo>\tools');import scp;scp.put(r'<repo>\tools\host_main.c','/tmp/rt/src/host_main.c')"
 ```
 
 ### harness 的命令行与环境变量
@@ -228,7 +228,7 @@ python -c "import sys;sys.path.insert(0,r'C:\Users\Administrator\Documents\switc
 ```bash
 Xvfb :99 -screen 0 1280x800x24 &
 export DISPLAY=:99
-/tmp/frd/build/client/X11/xfreerdp /v:192.168.1.10 /u:roguei /p:password \
+/tmp/frd/build/client/X11/xfreerdp /v:192.168.1.10 /u:user /p:password \
     /cert:ignore /size:1280x720 2>/tmp/rt/xf.err &
 sleep 8
 WID=$(xdotool search --onlyvisible --class xfreerdp | head -1)
@@ -245,7 +245,7 @@ FreeRDP 源码里被打了两个 dump 补丁（**在测试机上，不在本仓�
 
 ```powershell
 python tools\patch_frd_fp.py                     # 打 fastpath 输入 dump 补丁
-python -c "import sys;sys.path.insert(0,r'C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp\tools');import rsh;print(rsh.run('cd /tmp/frd/build && ninja xfreerdp',1200)[1])"
+python -c "import sys;sys.path.insert(0,r'<repo>\tools');import rsh;print(rsh.run('cd /tmp/frd/build && ninja xfreerdp',1200)[1])"
 ```
 
 抓下来之后用现成解析器：
@@ -276,7 +276,7 @@ powershell -File tools\run_win.ps1 -Mode full -Secs 15
 
 | 脚本 | 用途 |
 |---|---|
-| `tools/rsh.py` | `rsh.run(cmd, timeout)` 在 192.168.100.17 上执行命令 |
+| `tools/rsh.py` | `rsh.run(cmd, timeout)` 在 192.168.1.17 上执行命令 |
 | `tools/scp.py` | `scp.put(local, remote)` 上传 |
 | `tools/scp_get.py` | `scp_get.get(remote, local)` 下载 |
 | `tools/ppm2png3.py` | PPM→PNG（**带命令行参数**，用这个；`ppm2png.py` 是写死路径的老版本） |

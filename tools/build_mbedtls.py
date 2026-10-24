@@ -43,10 +43,15 @@ AR = os.path.join(BIN, "aarch64-none-elf-ar.exe")
 CFLAGS = [
     "-mcpu=cortex-a53+fp+simd", "-mtune=cortex-a53",
     "-O2", "-g", "-fPIC", "-fno-strict-aliasing",
+    # strip the build machine path out of __FILE__ (mbedTLS prints it in its
+    # error log); otherwise the released NRO carries the developer's home path.
+    "-ffile-prefix-map=" + SRC + "=mbedtls",
     "-mstrict-align", "-D_DEFAULT_SOURCE",
     "-I" + os.path.join(SRC, "include"),
-    "-I" + os.path.join(DEVKITPRO, "libnx", "nx", "include"),
-    "-I" + os.path.join(DEVKITPRO, "libnx", "nx", "external", "bsd", "include"),
+    # installed libnx headers (C:/devkitPro/libnx/{include,lib}); the old
+    # "libnx/nx/..." layout only exists when libnx is used straight from its
+    # source tree.
+    "-I" + os.path.join(DEVKITPRO, "libnx", "include"),
 ]
 
 

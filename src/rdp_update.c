@@ -113,7 +113,7 @@ static void blit_raw(rdp_surface* s, int dl, int dt, int w, int h, int bpp,
 {
     /* RDP bitmap rows are padded to a 4-byte boundary (TS_BITMAP_DATA); without
      * this every row shifts a little and the picture turns into diagonal
-     * garbage - the "one weird coloured block" on Windows Server 2012. */
+     * garbage - the "one weird coloured block" seen on RDP 5 servers. */
     int rowbytes = ((w * bpp + 7) / 8 + 3) & ~3;
     int y, x;
 
@@ -162,7 +162,7 @@ static void blit_raw(rdp_surface* s, int dl, int dt, int w, int h, int bpp,
 
 /* ------------------------------------------------------------------ */
 /* Interleaved RLE - the RLE_BITMAP_STREAM of MS-RDPEGDI that Windows  */
-/* Server 2012 sends for BITMAP_COMPRESSION | NO_BITMAP_COMPRESSION_HDR*/
+/* RDP 5 servers send for BITMAP_COMPRESSION | NO_BITMAP_COMPRESSION_HDR. */
 /* (flags & 0x401).                                                    */
 /*                                                                     */
 /* This is not a colour/count list: every order is relative to the row */

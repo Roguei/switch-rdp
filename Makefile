@@ -27,9 +27,9 @@ LIBNX   = $(DEVKITPRO)/libnx
 # Defaults point at the layout this was developed in; override on the command
 # line for a fresh checkout.  TOOLCHAIN is only used for build_nro.py, which
 # lives in tools/ here.
-MBEDTLS   ?= C:/Users/ADMINI~1/DOCUME~1/SWITCH~1/APP/SWITCH~1/third_party/mbedtls-install
+MBEDTLS   ?= third_party/mbedtls-install
 TOOLCHAIN ?= tools
-PYTHON    ?= C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe
+PYTHON    ?= python
 
 INCLUDES = -I$(LIBNX)/include \
            -I$(MBEDTLS)/include \
@@ -65,7 +65,7 @@ ELF = build/switch_rdp.elf
 TARGET = build/switch_rdp.nro
 # Title/publisher written into the NACP (what hbmenu shows next to the icon).
 NACP_NAME = RDP
-NACP_PUB  = roguei
+NACP_PUB  = switch-rdp
 NRO_ARGS  = --name=$(NACP_NAME) --publisher=$(NACP_PUB)
 # Both variants carry the same image plus the trailing ASET asset section
 # (icon + NACP).  hbmenu shows the icon and title from it, and Ryujinx >= 1.10

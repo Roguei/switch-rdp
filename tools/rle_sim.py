@@ -3,7 +3,7 @@ order streams.
 
 Second, independent implementation of the algorithm in
 libfreerdp/codec/include/bitmap.h (RLEDECOMPRESS): it is used for
-  * identifying what Windows Server 2012 actually sends (see docs
+  * identifying what an RDP 5-only server actually sends (see docs
     04_TESTING), and
   * cross-checking the C decoder in src/rdp_update.c via
     tools/_rle_test.exe + tools/_rle_sim_batch.py (same FNV hash).

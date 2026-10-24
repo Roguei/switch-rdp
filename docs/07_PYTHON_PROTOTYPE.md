@@ -8,11 +8,11 @@
 
 ```powershell
 # 默认参数都在 run_win.ps1 里（连 192.168.1.10，RDP_SEC=0 → 不带安全头）
-powershell -File C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp\tools\run_win.ps1 -Mode full -Secs 15
+powershell -File <repo>\tools\run_win.ps1 -Mode full -Secs 15
 
 # 直接跑（自己指定环境变量）
-$env:RDP_HOST="192.168.1.10"; $env:RDP_USER="roguei"; $env:RDP_PASS="password"
-& 'C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe' C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp\tools\rdp_client.py
+$env:RDP_HOST="192.168.1.10"; $env:RDP_USER="user"; $env:RDP_PASS="password"
+& python <repo>\tools\rdp_client.py
 ```
 
 依赖：`paramiko`、`cryptography`（都装了）。
@@ -37,7 +37,7 @@ $env:RDP_HOST="192.168.1.10"; $env:RDP_USER="roguei"; $env:RDP_PASS="password"
 | 变量 | 默认 | 说明 |
 |---|---|---|
 | `RDP_HOST` / `RDP_PORT` | 192.168.1.10 / 3389 | 服务器 |
-| `RDP_USER` / `RDP_PASS` | roguei / password | 凭证 |
+| `RDP_USER` / `RDP_PASS` | user / password | 凭证 |
 | `RDP_SECS` | 25 | loop 持续秒数（收图时间） |
 
 ### 安全头 / 通道

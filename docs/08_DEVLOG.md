@@ -1,7 +1,7 @@
 > **这是开发流水笔记（按时间顺序）**，里面的路径/结论可能已经过时。
 > 结论请看 `00_HANDOFF.md` 和 `02_PROTOCOL.md`；工具路径请看 `03_BUILD_TOOLING.md`。
 
-> **项目已迁到工作区内**：`C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp`
+> **项目已迁到工作区内**：`<repo>`
 > 交接文档在 `APP\switch_rdp\docs\`（从 `00_HANDOFF.md` 开始读）。
 > 本文件是开发流水笔记，结论以 docs 为准。
 # Switch Homebrew 开发踩坑记录（switch_rdp 项目实战总结）
@@ -43,7 +43,7 @@ Ryujinx 对 `.nro` 格式检查很严格，裸 ELF 会被拒绝：
 
 **关键点**：libnx 链接脚本已经把 `NroStart` 放在 vaddr 0，并把 0x10~0x80 留空，
 所以“ELF 的扁平镜像 + 在 0x10 处塞入 NRO 头”就是正确的 NRO。
-本仓库 `C:\Users\Administrator\Documents\switch工作区\toolchain\build_nro.ps1` 就是干这个的（从 ELF 的 PT_LOAD 生成扁平镜像、算 bss、补 ASET）。
+本仓库 `<workdir>\toolchain\build_nro.ps1` 就是干这个的（从 ELF 的 PT_LOAD 生成扁平镜像、算 bss、补 ASET）。
 
 ---
 
@@ -107,7 +107,7 @@ Ryujinx 对 `.nro` 格式检查很严格，裸 ELF 会被拒绝：
 2. 用 `-D_GNU_SOURCE`，加 `-DWITH_UNICODE_BUILTIN=ON`（否则要 ICU）、`-DWITH_KRB5=OFF`。
 3. 用 mbedTLS 后端替代 OpenSSL：`-DWITH_OPENSSL=OFF -DWITH_MBEDTLS=ON -DMBEDTLS_ROOT=...`。
 4. 关掉不需要的通道：`-DCHANNEL_URBDRC=OFF`（要 libusb）、`-DWITH_SMARTCARD=OFF`。
-5. CMake 用 msys 的 cmake 配置，但**编译要用原生 GNU make**（`C:\Users\Administrator\Documents\switch工作区\toolchain\make.exe`）；
+5. CMake 用 msys 的 cmake 配置，但**编译要用原生 GNU make**（`<workdir>\toolchain\make.exe`）；
    msys make 处理 `C:/` 路径的依赖文件会报 “multiple target patterns”。
 6. 加 `-DCMAKE_DEPENDS_USE_COMPILER=OFF` 避免依赖文件里的盘符冒号问题；
    或在 build.make 里把 `include XXX/compiler_depend.make` 改成 `-include`。
@@ -230,7 +230,7 @@ NTLM NEGOTIATE 参考（mstsc 实测）：
 
 Target used for validation: `192.168.1.10:3389` (Windows, user/password).
 
-### What works end to end in `C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp\tools\rdp_client.py`
+### What works end to end in `<repo>\tools\rdp_client.py`
 X.224 (selected=0x08) -> TLS 1.2 -> CredSSP v6 (NTLMv2 + MIC + pubKeyAuth +
 TSCredentials) -> MCS connect -> 4 channel joins -> Client Info -> Demand Active
 -> Confirm Active accepted -> Grant Control -> Font Map -> Save Session Info.
@@ -283,8 +283,8 @@ MS-RDPBCGR), which is the exact remaining blocker.
 
 ### Reference harness (kept for future work)
 `xfreerdp` is installed on the Ubuntu box and works against the same server:
-`DISPLAY=:0 XAUTHORITY=/home/roguei/.Xauthority xfreerdp /v:192.168.1.10
- /u:roguei /p:password /cert:ignore /size:1024x768 /log-level:TRACE`
+`DISPLAY=:0 XAUTHORITY=/home/user/.Xauthority xfreerdp /v:192.168.1.10
+ /u:user /p:password /cert:ignore /size:1024x768 /log-level:TRACE`
 FreeRDP 3.5.1 source is cloned at `/tmp/frd` on that box (buildable with
 `-DWITH_DEBUG_RDP=ON` to hexdump sent PDUs).
 
@@ -533,7 +533,7 @@ bpp=32 -> "Invalid color depth 32"   (interleaved_decompress 压根不支持 32b
 
 ## switch_rdp: RDP client working end-to-end (2026-10-22 21:40)
 
-C 版客户端（与 Switch NRO 同一份源码）现在完整跑通 Windows 11 远程桌面：
+C 版客户端（与 Switch NRO 同一份源码）现在完整跑通 RDP 6 服务器 远程桌面：
 TCP → X.224(0x0B) → TLS1.2 → CredSSP v6 → MCS → Client Info → Demand Active
 → Confirm Active → finalization → FastPath 位图更新（RDP6 Planar 解码）
 → 键盘/鼠标 FastPath 输入。1280x720 与 1024x768 都被服务器接受。
@@ -595,8 +595,8 @@ textFlags/exFlags 在 68..71。
 
 ### 文件
 
-- C 源码：`C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp\src\*.c`，NRO：`C:\Users\Administrator\Documents\switch工作区\APP\switch_rdp\build\switch_rdp.nro`
-- PC 验证用 harness：`tools\host_main.c` + `tools\build_host3.py`（在 192.168.100.17 上编译运行）
+- C 源码：`<repo>\src\*.c`，NRO：`<repo>\build\switch_rdp.nro`
+- PC 验证用 harness：`tools\host_main.c` + `tools\build_host3.py`（在 192.168.1.17 上编译运行）
 - 模拟器：`emulators\Nextendo`（portable），SD 卡目录 `portable\sdcard`
 - 自动连接：`sdmc:/switch_rdp.cfg`（四行：host/port/user/password），存在则跳过设置界面
 - 运行日志：`sdmc:/switch_rdp_log.txt`
@@ -719,7 +719,7 @@ msys 程序、PATH 里没有 `/usr/bin` 而静默失败，导致 `default_font_b
 
 ### 10.1 证据
 
-b39 加的 `rle dump` 抓到了 Server 2012 的原始载荷：64x64、bpp=16、flags=0x401、
+b39 加的 `rle dump` 抓到了 RDP 5 位图服务器 的原始载荷：64x64、bpp=16、flags=0x401、
 blen=23，而且整屏 220 块**完全一样**：
 
 ```
@@ -862,8 +862,7 @@ ASET 偏移是否落在文件内、icon 是不是 256x256 JPEG、NACP 是不是 
   （字体/图标生成、NRO 打包与校验、RLE 对拍、安装脚本），
   `out/ ref/ scratch/ shots/ third_party/ docs/baselines/` 全部排除——
   这些是 bring-up 期间的实验产物，不该进历史。
-- 发布前把文档里写着测试机的 `192.168.100.141` / `roguei` / `123456` 换成了示例值：
-  私有 IP 无所谓，明文密码进了公开仓库就是另一回事。
+- 发布前把文档里的测试机地址、账号、密码全部换成了示例值。
 
 ### 12.4 教训
 
