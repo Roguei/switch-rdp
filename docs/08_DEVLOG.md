@@ -824,3 +824,50 @@ msys2 的 `sh.exe`，make 就改用 sh，于是链接那一步报
 
 新增的中文串（"备用配置已保存 已恢复界面配置"等）重新跑了 `tools/gen_ui_font.py`，
 281 个字形。**改完界面文字一定要重跑**，否则新字是空白。
+
+## 12. b43（2026-10-24）：起名 RDP、图标、打包、开源
+
+功能到此已经够用（真机实测：左摇杆指针手感、右摇杆滚轮、中文输入法、隐藏配置全部通过），
+这一版只做"能发出去"的事。
+
+### 12.1 名字与图标
+
+- 显示名统一成 **RDP**：主界面标题、连接页标题、启动日志、NACP 标题。
+  配置和日志文件名仍然是 `switch_rdp.cfg` / `switch_rdp_log.txt`——改名会让老配置失联，
+  没必要为了好看让用户重填一遍隐藏配置。
+- `tools/gen_icon.py` 画 256x256 JPEG：深蓝圆角砖 + 蓝框显示器 + 桌面色条 + 白色指针 +
+  `RDP` 字。图标是**代码生成**的，改一行重跑就有新图，不用外部素材。
+
+### 12.2 NRO 资源段（图标 + NACP）
+
+`tools/build_nro.py` 早就写 ASET 段（magic + version + 3×(u64 off, u64 size)），
+这版补了三件事：
+
+- `--name=` / `--publisher=`，标题写进 NACP 的 16 个语言槽（以前硬编码 `switch_rdp`）；
+- icon/NACP 之间做 8 字节对齐；
+- `find_icon()` 先找仓库里的 `assets/icon.jpg`（以前写死 `../APP/switch_rdp/assets`，
+  把打包脚本挪进 `tools/` 之后图标就静默丢了——NRO 尺寸从 1199544 掉到 1190088，
+  正是那 15 KB 图标的差距，靠 `tools/check_nro.py` 才一眼看出来）。
+
+`tools/check_nro.py` 是这轮新写的体检脚本：NRO 头 magic/size、三段是否加得起来、
+ASET 偏移是否落在文件内、icon 是不是 256x256 JPEG、NACP 是不是 0x4000 且标题非空。
+以后每次打包跑一遍，比上机试错便宜太多。
+
+### 12.3 打包与仓库
+
+- `tools/make_release.py b43` 产出 `dist/RDP_b43.nro`（带图标）、
+  `RDP_b43_bare.nro`（不带资源段）、`RDP_b43.zip`（解压到 SD 根就是
+  `switch/RDP.nro` + 配置模板 + README + LICENSE）。
+- 仓库：`git init` 在项目根，`.gitignore` 用**白名单**保留 `tools/` 里 13 个发布用脚本
+  （字体/图标生成、NRO 打包与校验、RLE 对拍、安装脚本），
+  `out/ ref/ scratch/ shots/ third_party/ docs/baselines/` 全部排除——
+  这些是 bring-up 期间的实验产物，不该进历史。
+- 发布前把文档里写着测试机的 `192.168.100.141` / `roguei` / `123456` 换成了示例值：
+  私有 IP 无所谓，明文密码进了公开仓库就是另一回事。
+
+### 12.4 教训
+
+- **打包脚本一挪位置，相对路径就会静默失效**（图标丢了但构建"成功"）。
+  凡是"可选资源"，产物尺寸必须校验，否则丢了都不知道。
+- Makefile 里的 `MBEDTLS` / `TOOLCHAIN` / `PYTHON` 改成 `?=` 可覆盖，
+  别人的机器不用再改文件就能编。

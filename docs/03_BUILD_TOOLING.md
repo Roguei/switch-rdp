@@ -113,10 +113,14 @@ build/switch_rdp.nro -> 1122360 bytes (image 0x112000 + ASET 0x38) bss=0x2C560
 ## 2. 部署到 Switch
 
 ```
-sd:/switch/switch_rdp.nro                 ← 主程序
+sd:/switch/RDP.nro                        ← 主程序（hbmenu 里显示的名字和图标来自 NACP）
 sd:/switch_rdp.cfg                        ← 可选，存在则跳过设置界面自动连接
-sd:/switch_rdp_log.txt                    ← 运行日志（每次启动覆盖）
+sd:/switch_rdp_log.txt                    ← 运行日志（轮转，超过 512 KB 换新文件）
 ```
+
+`RDP.nro` 尾部带 ASET 资源段（icon.jpg + 0x4000 字节 NACP，标题 `RDP`）：
+hbmenu 用它显示图标与名称，Ryujinx 没有这一段会直接抛 `NullReferenceException`。
+`make hw-bare` 产出不带资源段的裸镜像，只在排查加载器问题时用。
 
 `sd:/switch_rdp.cfg` 是 `key = value` 文本（PC 上编辑，UTF-8）：
 
