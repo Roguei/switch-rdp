@@ -25,7 +25,8 @@ X.224 → TLS → CredSSP/NLA → MCS → 能力协商 → FastPath 图形更新
 
 ## 安装
 
-1. 从 Releases 下载 `RDP_b43.zip`（或直接下 `RDP_b43.nro`）
+1. 从 [Releases](https://github.com/Roguei/switch-rdp/releases/latest) 下载 `RDP_b43.zip`
+   （或直接下 `RDP_b43.nro`）
 2. 解压到 SD 卡根目录，得到 `SD:/switch/RDP.nro`
 3. hbmenu 里选中运行；图标与标题来自 NRO 尾部的 ASET 资源段（NACP 名称 `RDP`）
 
